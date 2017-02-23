@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:gravity="center"
     android:layout_height="match_parent"
-    android:background="@color/primary_light">
+    android:background="@drawable/splash_bg_new">
 
-    <!--<realizer.com.makemepopular.utils.CustomGifView
+<!--    <realizer.com.makemepopular.utils.CustomGifView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />-->
-    <TextView
+        android:layout_height="400dp" />-->
+    <!--<TextView
         android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:background="@drawable/location"/>
+        android:layout_height="match_parent"
+        android:background="@drawable/splash_gif"/>-->
 </LinearLayout>

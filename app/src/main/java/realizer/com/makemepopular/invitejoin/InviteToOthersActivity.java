@@ -33,9 +33,11 @@ import java.util.List;
 import java.util.Locale;
 
 import realizer.com.makemepopular.R;
+import realizer.com.makemepopular.exceptionhandler.ExceptionHandler;
 import realizer.com.makemepopular.invitejoin.adapter.ContactsAdapter;
 import realizer.com.makemepopular.invitejoin.adapter.ContactsListClass;
 import realizer.com.makemepopular.invitejoin.model.ContactModel;
+import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnBackPressFragment;
 
 
@@ -67,6 +69,7 @@ public class InviteToOthersActivity extends AppCompatActivity implements OnBackP
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler(this,""));
         setContentView(R.layout.contact_list_activity);
         //StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().detectDiskWrites().penaltyLog().penaltyDeath().build());
 //        sharedpreferences= PreferenceManager.getDefaultSharedPreferences(getActivity());
@@ -128,8 +131,9 @@ public class InviteToOthersActivity extends AppCompatActivity implements OnBackP
         s = sb.toString().trim();
         String name=sb2.toString().trim();
         if (TextUtils.isEmpty(s)) {
-            Toast.makeText(context, "Select atleast one Contact",
-                    Toast.LENGTH_SHORT).show();
+//            Toast.makeText(context, "Select atleast one Contact",
+//                    Toast.LENGTH_SHORT).show();
+            Config.alertDialog(this, "Suggestion", "Select atleast one contact.");
         } else {
             s = s.substring(0, s.length() - 1);
             name=name.substring(0, name.length() - 1);
@@ -192,11 +196,13 @@ public class InviteToOthersActivity extends AppCompatActivity implements OnBackP
                             //Toast.makeText(getActivity(), mobList.toString(), Toast.LENGTH_SHORT).show();
                             String inviteMsg = edtmessage.getText().toString();
                             if (inviteMsg.equals("")) {
-                                Toast.makeText(InviteToOthersActivity.this, "Enter Message", Toast.LENGTH_SHORT).show();
+                                //Toast.makeText(InviteToOthersActivity.this, "Enter Message", Toast.LENGTH_SHORT).show();
+                                Config.alertDialog(InviteToOthersActivity.this, "Suggestion", "Please Enter Message.");
                             }
                             else if (TextUtils.isEmpty(inviteMsg))
                             {
-                                Toast.makeText(InviteToOthersActivity.this, "Enter Message", Toast.LENGTH_SHORT).show();
+                                //Toast.makeText(InviteToOthersActivity.this, "Enter Message", Toast.LENGTH_SHORT).show();
+                                Config.alertDialog(InviteToOthersActivity.this, "Suggestion", "Please Enter Message.");
                             }
                             else {
                                 if (!mobList.equals(null)) {
@@ -223,7 +229,8 @@ public class InviteToOthersActivity extends AppCompatActivity implements OnBackP
                                    finish();
 
                                 } else {
-                                    Toast.makeText(InviteToOthersActivity.this, "Enter Mobile Number", Toast.LENGTH_SHORT).show();
+                                    //Toast.makeText(InviteToOthersActivity.this, "Enter Mobile Number", Toast.LENGTH_SHORT).show();
+                                    Config.alertDialog(InviteToOthersActivity.this, "Suggestion", "Please Enter Mobile Number.");
                                 }
                             }
                         }
@@ -323,7 +330,7 @@ public class InviteToOthersActivity extends AppCompatActivity implements OnBackP
                         bean.setSelected(true);
                         chk.setChecked(true);
                     }
-                    Toast.makeText(InviteToOthersActivity.this, "ListClicked", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(InviteToOthersActivity.this, "ListClicked", Toast.LENGTH_SHORT).show();
                 }
             });
             rlPBContainer.setVisibility(View.GONE);

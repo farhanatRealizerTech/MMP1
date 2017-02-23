@@ -6,6 +6,10 @@ package realizer.com.makemepopular.addfriend;
 public class AddFriendModel
 {
     String FriendName="";
+    String thumbnailUrl="";
+    boolean isRequestSent=false;
+    String gender="";
+    int age=0;
 
     int red=255;
     int green=255;
@@ -60,5 +64,37 @@ public class AddFriendModel
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public boolean isRequestSent() {
+        return isRequestSent;
+    }
+
+    public void setRequestSent(boolean isRequestSent) {
+        this.isRequestSent = isRequestSent;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
     }
 }

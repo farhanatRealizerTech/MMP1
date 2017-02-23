@@ -22,6 +22,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import realizer.com.makemepopular.Singleton;
+import realizer.com.makemepopular.exceptionhandler.NetworkException;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnTaskCompleted;
 
@@ -60,7 +62,7 @@ public class SetInterestAsyntask extends AsyncTask<Void,Void,StringBuilder> {
         try
         {
             sharedpreferences = PreferenceManager.getDefaultSharedPreferences(mycontext);
-            String chk = sharedpreferences.getString("UserId","");
+
             jsonObject.put("UserId",sharedpreferences.getString("UserId",""));
             jsonObject.put("interestNameList",new JSONArray(interest));
 
@@ -87,7 +89,17 @@ public class SetInterestAsyntask extends AsyncTask<Void,Void,StringBuilder> {
             }
             else
             {
+                StringBuilder exceptionString = new StringBuilder();
+                HttpEntity entity = httpResponse.getEntity();
+                InputStream content = entity.getContent();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+                String line;
+                while((line=reader.readLine()) != null)
+                {
+                    exceptionString.append(line);
+                }
 
+                NetworkException.insertNetworkException(mycontext, exceptionString.toString());
             }
 
         } catch (JSONException e) {

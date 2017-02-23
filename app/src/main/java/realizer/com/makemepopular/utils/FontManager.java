@@ -11,6 +11,9 @@ public class FontManager {
     public static final String ROOT = "fonts/",
             FONTAWESOME = ROOT + "fontawesome-webfont.ttf";
 
+    public static final String ROOT2 = "fonts/",
+            FONTAWESOME2 = ROOT2 + "hallo-sans.ttf";
+
     public static Typeface getTypeface(Context context, String font) {
         return Typeface.createFromAsset(context.getAssets(), font);
     }

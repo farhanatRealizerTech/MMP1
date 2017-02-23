@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import realizer.com.makemepopular.exceptionhandler.NetworkException;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnTaskCompleted;
 
@@ -33,12 +34,17 @@ public class NearByfriendAsyntask extends AsyncTask<Void,Void,StringBuilder> {
     private OnTaskCompleted callback;
     SharedPreferences sharedpreferences;
     Double latitude,longitude;
+    String Interst;
+    int distance,page;
 
-    public NearByfriendAsyntask(Double lat, Double log, Context mycontext, OnTaskCompleted cb) {
+    public NearByfriendAsyntask(Double lat, Double log,String interst,int distance,int page, Context mycontext, OnTaskCompleted cb) {
         this.mycontext=mycontext;
         this.callback=cb;
         this.latitude=lat;
         this.longitude=log;
+        this.Interst=interst;
+        this.distance=distance;
+        this.page=page;
     }
 
     @Override
@@ -51,7 +57,7 @@ public class NearByfriendAsyntask extends AsyncTask<Void,Void,StringBuilder> {
     protected StringBuilder doInBackground(Void... params) {
         resultbuilder =new StringBuilder();
         HttpClient httpClient=new DefaultHttpClient();
-        String url= Config.URL_Mmp+"getNearByfriend";
+        String url= Config.URL_Tracking+"getNearByfriend";
         HttpPost httpPost=new HttpPost(url);
         String json="";
         StringEntity se=null;
@@ -60,9 +66,12 @@ public class NearByfriendAsyntask extends AsyncTask<Void,Void,StringBuilder> {
         {
             sharedpreferences = PreferenceManager.getDefaultSharedPreferences(mycontext);
 
-            jsonObject.put("UserId",sharedpreferences.getString("UserId",""));
-            jsonObject.put("Latitude",latitude);
-            jsonObject.put("Longitude",longitude);
+            jsonObject.put("userId",sharedpreferences.getString("UserId",""));
+            jsonObject.put("latitude",latitude);
+            jsonObject.put("longitude",longitude);
+            jsonObject.put("intrest",Interst);
+            jsonObject.put("distanceBetween",distance*1000);
+            jsonObject.put("page",page);
 
             json=jsonObject.toString();
 
@@ -87,7 +96,17 @@ public class NearByfriendAsyntask extends AsyncTask<Void,Void,StringBuilder> {
             }
             else
             {
+                StringBuilder exceptionString = new StringBuilder();
+                HttpEntity entity = httpResponse.getEntity();
+                InputStream content = entity.getContent();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+                String line;
+                while((line=reader.readLine()) != null)
+                {
+                    exceptionString.append(line);
+                }
 
+                NetworkException.insertNetworkException(mycontext, exceptionString.toString());
             }
 
         } catch (JSONException e) {

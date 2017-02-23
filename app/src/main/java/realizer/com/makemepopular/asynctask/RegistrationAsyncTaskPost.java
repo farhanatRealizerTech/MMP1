@@ -11,6 +11,8 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import realizer.com.makemepopular.exceptionhandler.NetworkException;
 import realizer.com.makemepopular.models.RegisterUserRequestModel;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnTaskCompleted;
@@ -64,8 +67,7 @@ public class RegistrationAsyncTaskPost extends AsyncTask<Void,Void,StringBuilder
             jsonObject.put("ContactNo",rgm.getContactNo());
             jsonObject.put("AccountType",rgm.getAccountType());
             jsonObject.put("Gender", rgm.getGender());
-            jsonObject.put("ThumbnailUrl","");
-           // String resdate = Config.getserverDate(rgm.getDob());
+            jsonObject.put("ThumbnailUrl",rgm.getThumbnailUrl());
             jsonObject.put("Dob",rgm.getDob());
             jsonObject.put("lastCity",rgm.getLastCity());
             jsonObject.put("DeviceId",rgm.getDeviceId());
@@ -77,8 +79,8 @@ public class RegistrationAsyncTaskPost extends AsyncTask<Void,Void,StringBuilder
             httpPost.setEntity(se);
             httpPost.setHeader("Accept", "application/json");
             httpPost.setHeader("Content-type", "application/json");
-
-            HttpResponse httpResponse=httpClient.execute(httpPost);
+            HttpContext localContext = new BasicHttpContext();
+            HttpResponse httpResponse=httpClient.execute(httpPost,localContext);
             StatusLine statusLine=httpResponse.getStatusLine();
             int statuscode=statusLine.getStatusCode();
             if (statuscode==200)
@@ -92,16 +94,40 @@ public class RegistrationAsyncTaskPost extends AsyncTask<Void,Void,StringBuilder
                     resultbuilder.append(line);
                 }
             }
+            else  if (statuscode==302)
+            {
+                resultbuilder.append("Already registered user");
+            }
             else
             {
+                StringBuilder exceptionString = new StringBuilder();
+                HttpEntity entity = httpResponse.getEntity();
+                InputStream content = entity.getContent();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+                String line;
+                while((line=reader.readLine()) != null)
+                {
+                    exceptionString.append(line);
+                }
 
+                NetworkException.insertNetworkException(mycontext, exceptionString.toString());
+                resultbuilder.append("Server not Responding");
             }
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        catch (IOException e) {
+        catch (Exception e) {
             e.printStackTrace();
+            String msg=e.getCause().getMessage();
+            if (msg.contains("302"))
+            {
+                resultbuilder.append("Already registered user");
+            }
+            else
+            {
+                resultbuilder.append("Server not Responding");
+            }
         }
         return resultbuilder;
     }

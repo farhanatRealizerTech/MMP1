@@ -19,11 +19,12 @@ import java.util.HashMap;
 import java.util.List;
 
 import realizer.com.makemepopular.asynctask.SetInterestAsyntask;
+import realizer.com.makemepopular.exceptionhandler.ExceptionHandler;
 import realizer.com.makemepopular.interest.InterestAdapter;
 import realizer.com.makemepopular.interest.InterestModel;
-import realizer.com.makemepopular.utils.Config;
-import realizer.com.makemepopular.utils.FontManager;
-import realizer.com.makemepopular.utils.OnTaskCompleted;
+import realizer.com.makemepopular.introscreen.WelcomeActivity;
+import realizer.com.makemepopular.service.AutoSyncService;
+import realizer.com.makemepopular.utils.*;
 import realizer.com.makemepopular.view.ProgressWheel;
 
 /**
@@ -35,29 +36,80 @@ public class InterestActivity extends AppCompatActivity implements OnTaskComplet
     String selectlist;
     TextView ico_trecking,ico_dating,ico_sports,ico_music,ico_dancing,ico_bikers,ico_gossip,ico_socialwork,ico_technical;
     ProgressWheel loading;
-
+    SharedPreferences sharedpreferences;
+    ArrayList<String> alreadySelectedlist;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler(this,""));
         setContentView(R.layout.interest_dialog);
-
+        setContentView(R.layout.interest_dialog);
 
         getSupportActionBar().hide();
 
         String[] Interests = getResources().getStringArray(R.array.interest_text);
         String[] Interestico=getResources().getStringArray(R.array.icofont);
 
-        for(int i=0;i<Interests.length;i++){
-
-            InterestModel im=new InterestModel();
-            im.setInteresticoText(Interestico[i]);
-            im.setInterestText(Interests[i]);
-            interestmodel.add(im);
-        }
         loading =(ProgressWheel) findViewById(R.id.loading);
         final GridView interestgridview= (GridView) findViewById(R.id.interest_gridview);
+        Button btn_addinterest= (Button) findViewById(R.id.btn_addinterest);
+        Button btn_skipinterest= (Button) findViewById(R.id.btn_skipinterest);
 
-        interestgridview.setAdapter(new InterestAdapter(InterestActivity.this, interestmodel));
+        Bundle bundle=getIntent().getExtras();
+        String fromWhere=bundle.getString("FromWhere");
+        if (fromWhere.equalsIgnoreCase("Register"))
+        {
+            btn_skipinterest.setVisibility(View.VISIBLE);
+            for(int i=0;i<Interests.length;i++){
+
+                InterestModel im=new InterestModel();
+                im.setInteresticoText(Interestico[i]);
+                im.setInterestText(Interests[i]);
+                interestmodel.add(im);
+            }
+            interestgridview.setAdapter(new InterestAdapter(InterestActivity.this, interestmodel));
+        }
+        else
+        {
+            alreadySelectedlist=new ArrayList<>();
+            alreadySelectedlist = realizer.com.makemepopular.utils.Singleton.getAlreadyselectedInterestList();
+            btn_skipinterest.setVisibility(View.GONE);
+            if (alreadySelectedlist != null)
+            {
+                for(int i=0;i<Interests.length;i++){
+
+                    InterestModel im=new InterestModel();
+                    im.setInteresticoText(Interestico[i]);
+                    im.setInterestText(Interests[i]);
+                    interestmodel.add(im);
+                }
+                for(int i=0;i<alreadySelectedlist.size();i++){
+                    for(int j=0;j<interestmodel.size();j++){
+                        if (interestmodel.get(j).getInterestText().equalsIgnoreCase(alreadySelectedlist.get(i)))
+                        {
+                            InterestModel im=new InterestModel();
+                            im.setInteresticoText(interestmodel.get(j).getInteresticoText());
+                            im.setInterestText(interestmodel.get(j).getInterestText());
+                            im.setIs_selected(true);
+                            interestmodel.set(j,im);
+                        }
+                    }
+                }
+                interestgridview.setAdapter(new InterestAdapter(InterestActivity.this, interestmodel));
+            }
+            else
+            {
+                for(int i=0;i<Interests.length;i++){
+
+                    InterestModel im=new InterestModel();
+                    im.setInteresticoText(Interestico[i]);
+                    im.setInterestText(Interests[i]);
+                    interestmodel.add(im);
+                }
+                interestgridview.setAdapter(new InterestAdapter(InterestActivity.this, interestmodel));
+            }
+        }
+
         interestgridview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -71,23 +123,9 @@ public class InterestActivity extends AppCompatActivity implements OnTaskComplet
             }
         });
 
-
-
-        Button btn_addinterest= (Button) findViewById(R.id.btn_addinterest);
         btn_addinterest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-              /*  StringBuilder sb=new StringBuilder();
-                for (int i=0;i<interestmodel.size();i++)
-                {
-                    if (interestmodel.get(i).is_selected())
-                    {
-                        sb.append(interestmodel.get(i).getInterestText().toString()+"\n");
-                    }
-
-                }
-                selectlist=sb.toString();
-                Toast.makeText(InterestActivity.this, ""+selectlist, Toast.LENGTH_SHORT).show();*/
 
                 ArrayList<String> list = new ArrayList<String>();
                 for (int i=0;i<interestmodel.size();i++)
@@ -98,41 +136,46 @@ public class InterestActivity extends AppCompatActivity implements OnTaskComplet
                     }
                 }
 
-                if (Config.isConnectingToInternet(InterestActivity.this))
+                if (list.size()==0)
                 {
-                    loading.setVisibility(View.VISIBLE);
-                    SetInterestAsyntask interest=new SetInterestAsyntask(list,InterestActivity.this,InterestActivity.this);
-                    interest.execute();
+                    Config.alertDialog(InterestActivity.this,"Alert","Please Select Minimum One Interest");
                 }
                 else
                 {
-                    Config.alertDialog(InterestActivity.this,"Network Error","No Internet connection");
+                    if (Config.isConnectingToInternet(InterestActivity.this))
+                    {
+                        loading.setVisibility(View.VISIBLE);
+                        sharedpreferences = PreferenceManager.getDefaultSharedPreferences(InterestActivity.this);
+
+                        SetInterestAsyntask interest=new SetInterestAsyntask(list,InterestActivity.this,InterestActivity.this);
+                        interest.execute();
+                    }
+                    else
+                    {
+                        Config.alertDialog(InterestActivity.this,"Network Error","No Internet connection");
+                    }
                 }
             }
         });
 
+        btn_skipinterest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(InterestActivity.this);
+                SharedPreferences.Editor edit = sharedpreferences.edit();
+                edit.putString("Login", "true");
+                edit.commit();
 
-/*
-        ico_trecking= (TextView) findViewById(R.id.interest_ico_trekking);
-        ico_dating= (TextView) findViewById(R.id.interest_ico_dating);
-        ico_sports= (TextView) findViewById(R.id.interest_ico_sports);
-        ico_music= (TextView) findViewById(R.id.interest_ico_music);
-        ico_dancing= (TextView) findViewById(R.id.interest_ico_dancing);
-        ico_bikers= (TextView) findViewById(R.id.interest_ico_bikers);
-        ico_gossip= (TextView) findViewById(R.id.interest_ico_gossip);
-        ico_socialwork= (TextView) findViewById(R.id.interest_ico_socialwork);
-        ico_technical= (TextView) findViewById(R.id.interest_ico_technical);
+                Intent interest=new Intent(InterestActivity.this,WelcomeActivity.class);
+                startActivity(interest);
 
-        ico_trecking.setTypeface(FontManager.getTypeface(this, FontManager.FONTAWESOME));
-        ico_dancing.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_sports.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_dating.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_music.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_bikers.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_gossip.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_socialwork.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-        ico_technical.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
-*/
+                Intent ser = new Intent(InterestActivity.this, AutoSyncService.class);
+                ser.putExtra("FirstTime", "");
+                startService(ser);
+
+                finish();
+            }
+        });
 
     }
 
@@ -140,18 +183,46 @@ public class InterestActivity extends AppCompatActivity implements OnTaskComplet
     public void onTaskCompleted(String s) {
         if (s.equalsIgnoreCase("true"))
         {
-            Toast.makeText(InterestActivity.this, "Successfully added interest", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(InterestActivity.this, "You Have Successfully Added Interest", Toast.LENGTH_SHORT).show();
+            //Config.alertDialog(this, "Error","Provider is null");
             SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(InterestActivity.this);
             SharedPreferences.Editor edit = sharedpreferences.edit();
             edit.putString("Login", "true");
             edit.commit();
+            Bundle b=getIntent().getExtras();
+            if (b.getString("FromWhere")!=null)
+            {
+                if (b.getString("FromWhere").equals("Dashboard"))
+                {
+                    Intent interest=new Intent(InterestActivity.this,DashboardActivity.class);
+                    startActivity(interest);
+                }
+                else
+                {
+                    Intent interest=new Intent(InterestActivity.this,WelcomeActivity.class);
+                    startActivity(interest);
 
-            Intent interest=new Intent(InterestActivity.this,DashboardActivity.class);
-            startActivity(interest);
+                    Intent ser = new Intent(InterestActivity.this, AutoSyncService.class);
+                    ser.putExtra("FirstTime", "");
+                    startService(ser);
+
+                }
+            }
+            else
+            {
+                Intent interest=new Intent(InterestActivity.this,WelcomeActivity.class);
+                startActivity(interest);
+
+                Intent ser = new Intent(InterestActivity.this, AutoSyncService.class);
+                ser.putExtra("FirstTime", "");
+                startService(ser);
+            }
+            finish();
         }
         else
         {
-            Toast.makeText(InterestActivity.this, "Error for adding interest", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(InterestActivity.this, "Error For Adding Interest", Toast.LENGTH_SHORT).show();
+            Config.alertDialog(this, "Error","Error For Adding Interest");
         }
         loading.setVisibility(View.GONE);
     }

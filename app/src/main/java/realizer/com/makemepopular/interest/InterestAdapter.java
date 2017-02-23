@@ -73,7 +73,10 @@ public class InterestAdapter extends BaseAdapter {
         }
 
         holder.interest_ico.setText(interestList.get(position).getInteresticoText());
-        holder.interest_text.setText(interestList.get(position).getInterestText());
+        if(interestList.get(position).getInterestText().equalsIgnoreCase("Trekking/Outing"))
+            holder.interest_text.setText("Hiking");
+        else
+            holder.interest_text.setText(interestList.get(position).getInterestText());
         holder.interest_ico.setTypeface(FontManager.getTypeface(context1, FontManager.FONTAWESOME));
 
         if (interestList.get(position).is_selected())

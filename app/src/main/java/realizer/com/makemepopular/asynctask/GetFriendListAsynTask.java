@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import realizer.com.makemepopular.exceptionhandler.NetworkException;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnTaskCompleted;
 
@@ -32,10 +33,14 @@ public class GetFriendListAsynTask extends AsyncTask<Void,Void,StringBuilder> {
     Context mycontext;
     private OnTaskCompleted callback;
     SharedPreferences sharedpreferences;
+    String fromWheer;
+    String lastUpdate;
 
-    public GetFriendListAsynTask(Context mycontext, OnTaskCompleted cb) {
+    public GetFriendListAsynTask(String fromWhere,Context mycontext, OnTaskCompleted cb,String lastUpdate) {
         this.mycontext=mycontext;
         this.callback=cb;
+        this.fromWheer=fromWhere;
+        this.lastUpdate=lastUpdate;
     }
 
     @Override
@@ -59,6 +64,7 @@ public class GetFriendListAsynTask extends AsyncTask<Void,Void,StringBuilder> {
 
             jsonObject.put("UserId",sharedpreferences.getString("UserId",""));
             jsonObject.put("searchText","");
+            jsonObject.put("lastUpdatedDate",lastUpdate);
 
             json=jsonObject.toString();
 
@@ -83,7 +89,17 @@ public class GetFriendListAsynTask extends AsyncTask<Void,Void,StringBuilder> {
             }
             else
             {
+                StringBuilder exceptionString = new StringBuilder();
+                HttpEntity entity = httpResponse.getEntity();
+                InputStream content = entity.getContent();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+                String line;
+                while((line=reader.readLine()) != null)
+                {
+                    exceptionString.append(line);
+                }
 
+                NetworkException.insertNetworkException(mycontext, exceptionString.toString());
             }
 
         } catch (JSONException e) {
@@ -99,7 +115,7 @@ public class GetFriendListAsynTask extends AsyncTask<Void,Void,StringBuilder> {
     protected void onPostExecute(StringBuilder stringBuilder) {
         super.onPostExecute(stringBuilder);
         //  dialog.dismiss();
-
+        stringBuilder.append("@@@FriendList@@@"+fromWheer);
         callback.onTaskCompleted(stringBuilder.toString());
     }
 

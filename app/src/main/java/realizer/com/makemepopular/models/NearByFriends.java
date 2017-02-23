@@ -13,6 +13,33 @@ public class NearByFriends {
     String distanceInKm="";
     String latitude="";
     String longitude="";
+    String gender="";
+    String age="";
+    String lastupdate="";
+
+    public String getAge() {
+        return age;
+    }
+
+    public void setAge(String age) {
+        this.age = age;
+    }
+
+    public String getLastupdate() {
+        return lastupdate;
+    }
+
+    public void setLastupdate(String lastupdate) {
+        this.lastupdate = lastupdate;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
 
     public String getFriendUserId() {
         return FriendUserId;

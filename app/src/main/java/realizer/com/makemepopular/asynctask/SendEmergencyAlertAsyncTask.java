@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import realizer.com.makemepopular.exceptionhandler.NetworkException;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.OnTaskCompleted;
 
@@ -62,10 +63,10 @@ public class SendEmergencyAlertAsyncTask extends AsyncTask<Void,Void,StringBuild
         {
             sharedpreferences = PreferenceManager.getDefaultSharedPreferences(mycontext);
 
-            jsonObject.put("UserId",sharedpreferences.getString("UserId",""));
-            jsonObject.put("Message",Message);
-            jsonObject.put("Latitude",latitude);
-            jsonObject.put("Longitude",longitude);
+            jsonObject.put("userId",sharedpreferences.getString("UserId",""));
+            jsonObject.put("message",Message);
+            jsonObject.put("latitude",latitude);
+            jsonObject.put("longitude",longitude);
 
             json=jsonObject.toString();
 
@@ -90,7 +91,17 @@ public class SendEmergencyAlertAsyncTask extends AsyncTask<Void,Void,StringBuild
             }
             else
             {
+                StringBuilder exceptionString = new StringBuilder();
+                HttpEntity entity = httpResponse.getEntity();
+                InputStream content = entity.getContent();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(content));
+                String line;
+                while((line=reader.readLine()) != null)
+                {
+                    exceptionString.append(line);
+                }
 
+                NetworkException.insertNetworkException(mycontext, exceptionString.toString());
             }
 
         } catch (JSONException e) {

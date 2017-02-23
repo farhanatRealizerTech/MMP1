@@ -44,11 +44,13 @@ public class FriendListModelAdapter extends BaseAdapter
     private Context context1;
     View convrtview;
     ViewHolder holder;
+    String fromWhere;
     //int pos;
 
-    public FriendListModelAdapter(Context context1, ArrayList<FriendListModel> friendList1) {
+    public FriendListModelAdapter(Context context1, ArrayList<FriendListModel> friendList1,String fromwhere) {
         friendList=friendList1;
         this.context1 = context1;
+        this.fromWhere=fromwhere;
         friendListInflater=LayoutInflater.from(context1);
     }
 
@@ -101,6 +103,17 @@ public class FriendListModelAdapter extends BaseAdapter
         holder.txtismessaging.setTypeface(FontManager.getTypeface(context1, FontManager.FONTAWESOME));
         holder.txtisemergency.setTypeface(FontManager.getTypeface(context1, FontManager.FONTAWESOME));
 
+        if (fromWhere.equalsIgnoreCase("Emergency"))
+        {
+            holder.txtistracking.setVisibility(View.GONE);
+            holder.txtismessaging.setVisibility(View.GONE);
+            holder.txtisemergency.setVisibility(View.GONE);
+        }
+        else {
+            holder.txtistracking.setVisibility(View.VISIBLE);
+            holder.txtismessaging.setVisibility(View.VISIBLE);
+            holder.txtisemergency.setVisibility(View.VISIBLE);
+        }
 
         if (friendList.get(position).istracking())
         {
@@ -133,15 +146,26 @@ public class FriendListModelAdapter extends BaseAdapter
 
         //pos=position;
 
+        holder.txtistracking.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (friendList.get(position).istracking())
+                {
+
+                }
+                else
+                {
+
+                }
+            }
+        });
+
         holder.txtisemergency.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //Toast.makeText(context1, "Emergency Activate to This Friend", Toast.LENGTH_SHORT).show();
                 //int pos = convrtview.getParent().get;
-                Toast.makeText(context1,position + "",Toast.LENGTH_SHORT).show();
-
-
-
+                //Toast.makeText(context1,position + "",Toast.LENGTH_SHORT).show();
                 if (friendList.get(position).isEmergency())
                 {
                    /* fm.setIsEmergency(false);
@@ -274,6 +298,11 @@ public class FriendListModelAdapter extends BaseAdapter
             }
             catch (IOException e) {
                 e.printStackTrace();
+                String msg=e.getCause().getMessage();
+                if (msg.contains("302"))
+                {
+                    resultbuilder.append(msg);
+                }
             }
             return resultbuilder;
         }
@@ -289,11 +318,13 @@ public class FriendListModelAdapter extends BaseAdapter
                     fm.setIsEmergency(true);
                     holder.txtisemergency.setTextColor(Color.MAGENTA);
                     holder.txtisemergency.setText(R.string.fa_toggle_on_ico);
+                    Toast.makeText(context1, "Emergency Activated to "+friendList.get(posi).getFriendName()+" Friend", Toast.LENGTH_SHORT).show();
                 }
                 else {
                     fm.setIsEmergency(false);
                     holder.txtisemergency.setTextColor(Color.LTGRAY);
                     holder.txtisemergency.setText(R.string.fa_toggle_off_ico);
+                    Toast.makeText(context1, "Emergency Deactivated to "+friendList.get(posi).getFriendName()+" Friend", Toast.LENGTH_SHORT).show();
                 }
                 fm.setFriendName(friendList.get(posi).getFriendName());
                 fm.setFriendId(friendList.get(posi).getFriendId());
@@ -303,7 +334,7 @@ public class FriendListModelAdapter extends BaseAdapter
             }
             else
             {
-
+                Toast.makeText(context1, friendList.get(posi).getFriendName()+" is not your Friend", Toast.LENGTH_SHORT).show();
             }
             /*stringBuilder.append("@@@SendAlert");
             callback.onTaskCompleted(stringBuilder.toString());*/

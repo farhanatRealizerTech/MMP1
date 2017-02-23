@@ -1,6 +1,17 @@
 package realizer.com.makemepopular.neaybyplaces;
 
 
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.location.Criteria;
+import android.location.LocationManager;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.ResultReceiver;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 
 import android.Manifest;
@@ -12,6 +23,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -32,10 +44,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.List;
 
 import realizer.com.makemepopular.R;
+import realizer.com.makemepopular.exceptionhandler.ExceptionHandler;
+import realizer.com.makemepopular.utils.Config;
+import realizer.com.makemepopular.utils.FontManager;
+import realizer.com.makemepopular.utils.UtilLocation;
+import realizer.com.makemepopular.utils.Utility;
+import realizer.com.makemepopular.view.ProgressWheel;
 
 /**
  * Created by Win on 14/01/2017.
@@ -53,31 +74,42 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
     Location mLastLocation;
     Marker mCurrLocationMarker;
     LocationRequest mLocationRequest;
+    ProgressWheel loading;
+    MessageResultReceiver resultReceiver;
+    LocationManager locationmanager;
+    String provider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler(this,""));
         setContentView(R.layout.activity_maps);
-
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Near By Places");
+        loading=(ProgressWheel)findViewById(R.id.loading);
+
+        realizer.com.makemepopular.utils.Singleton obj = realizer.com.makemepopular.utils.Singleton.getInstance();
+        resultReceiver = new MessageResultReceiver(null);
+        obj.setResultReceiver(resultReceiver);
 
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkLocationPermission();
         }
 
-        //Check if Google Play Services Available or not
-        if (!CheckGooglePlayServices()) {
-            Log.d("onCreate", "Finishing test case since Google Play Services are not available");
-            finish();
-        }
-        else {
-            Log.d("onCreate","Google Play Services available.");
-        }
+        checkLocationService chklocation=new checkLocationService(NearyByPlacesActivity.this);
+        chklocation.execute();
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+
+        Criteria cri = new Criteria();
+        locationmanager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        provider = locationmanager.getBestProvider(cri, false);
+
+        if (mMap == null) {
+            // Try to obtain the map from the SupportMapFragment.
+            SupportMapFragment mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+            mapFrag.getMapAsync(this);
+
+        }
     }
 
     private boolean CheckGooglePlayServices() {
@@ -108,6 +140,41 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
         mMap = googleMap;
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 
+        if (canGetLocation() == true) {
+            if (provider != null & !provider.equals(""))
+
+            {
+                Location locatin= UtilLocation.getLastKnownLoaction(true, NearyByPlacesActivity.this);
+                if (locatin!=null)
+                {
+                    latitude=locatin.getLatitude();
+                    longitude=locatin.getLongitude();
+                    LatLng latLng = new LatLng(locatin.getLatitude(), locatin.getLongitude());
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(latLng);
+                    markerOptions.title("Current Position");
+                    markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+                    mCurrLocationMarker = mMap.addMarker(markerOptions);
+
+                    //move map camera
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                }
+                else{
+                    // Toast.makeText(AutoSyncService.this, "location not found", Toast.LENGTH_LONG).show();
+                }
+            }
+            else
+            {
+                //Toast.makeText(AutoSyncService.this,"Provider is null",Toast.LENGTH_LONG).show();
+            }
+
+            //DO SOMETHING USEFUL HERE. ALL GPS PROVIDERS ARE CURRENTLY ENABLED
+        } else {
+            //SHOW OUR SETTINGS ALERT, AND LET THE USE TURN ON ALL THE GPS PROVIDERS
+            //showSettingsAlert();
+        }
+
         //Initialize Google Play Services
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this,
@@ -124,61 +191,84 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
         }
 
         Button btnRestaurant = (Button) findViewById(R.id.btnRestaurant);
+        btnRestaurant.setTypeface(FontManager.getTypeface(this, FontManager.FONTAWESOME));
         btnRestaurant.setOnClickListener(new View.OnClickListener() {
             String Restaurant = "restaurant";
             @Override
             public void onClick(View v) {
                 Log.d("onClick", "Button is Clicked");
-                mMap.clear();
-                String url = getUrl(latitude, longitude, Restaurant);
-                Object[] DataTransfer = new Object[2];
-                DataTransfer[0] = mMap;
-                DataTransfer[1] = url;
-                Log.d("onClick", url);
-                GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
-                getNearbyPlacesData.execute(DataTransfer);
-                Toast.makeText(NearyByPlacesActivity.this,"Nearby Restaurants", Toast.LENGTH_LONG).show();
+                if (Config.isConnectingToInternet(NearyByPlacesActivity.this))
+                {
+                    mMap.clear();
+                    String url = getUrl(latitude, longitude, Restaurant);
+                    Object[] DataTransfer = new Object[2];
+                    DataTransfer[0] = mMap;
+                    DataTransfer[1] = url;
+                    Log.d("onClick", url);
+                    GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
+                    getNearbyPlacesData.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,DataTransfer);
+                }
+                else
+                {
+                    Utility.CustomToast(NearyByPlacesActivity.this, "No Internet Connection..!");
+                }
+               // Toast.makeText(NearyByPlacesActivity.this,"Nearby Restaurants", Toast.LENGTH_LONG).show();
             }
         });
 
         Button btnHospital = (Button) findViewById(R.id.btnHospital);
+        btnHospital.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
         btnHospital.setOnClickListener(new View.OnClickListener() {
             String Hospital = "hospital";
             @Override
             public void onClick(View v) {
                 Log.d("onClick", "Button is Clicked");
-                mMap.clear();
-                String url = getUrl(latitude, longitude, Hospital);
-                Object[] DataTransfer = new Object[2];
-                DataTransfer[0] = mMap;
-                DataTransfer[1] = url;
-                Log.d("onClick", url);
-                GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
-                getNearbyPlacesData.execute(DataTransfer);
-                Toast.makeText(NearyByPlacesActivity.this,"Nearby Hospitals", Toast.LENGTH_LONG).show();
+                if (Config.isConnectingToInternet(NearyByPlacesActivity.this)) {
+                    mMap.clear();
+                    String url = getUrl(latitude, longitude, Hospital);
+                    Object[] DataTransfer = new Object[2];
+                    DataTransfer[0] = mMap;
+                    DataTransfer[1] = url;
+                    Log.d("onClick", url);
+                    GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
+                    getNearbyPlacesData.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DataTransfer);
+                }
+                else
+                {
+                    Utility.CustomToast(NearyByPlacesActivity.this, "No Internet Connection..!");
+                }
+                //Toast.makeText(NearyByPlacesActivity.this,"Nearby Hospitals", Toast.LENGTH_LONG).show();
             }
         });
 
         Button btnSchool = (Button) findViewById(R.id.btnSchool);
+        btnSchool.setTypeface(FontManager.getTypeface(this,FontManager.FONTAWESOME));
         btnSchool.setOnClickListener(new View.OnClickListener() {
             String School = "school";
             @Override
             public void onClick(View v) {
                 Log.d("onClick", "Button is Clicked");
-                mMap.clear();
-                if (mCurrLocationMarker != null) {
-                    mCurrLocationMarker.remove();
+                if (Config.isConnectingToInternet(NearyByPlacesActivity.this)) {
+                    mMap.clear();
+                    if (mCurrLocationMarker != null) {
+                        mCurrLocationMarker.remove();
+                    }
+                    String url = getUrl(latitude, longitude, School);
+                    Object[] DataTransfer = new Object[2];
+                    DataTransfer[0] = mMap;
+                    DataTransfer[1] = url;
+                    Log.d("onClick", url);
+                    GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
+                    getNearbyPlacesData.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DataTransfer);
                 }
-                String url = getUrl(latitude, longitude, School);
-                Object[] DataTransfer = new Object[2];
-                DataTransfer[0] = mMap;
-                DataTransfer[1] = url;
-                Log.d("onClick", url);
-                GetNearbyPlacesData getNearbyPlacesData = new GetNearbyPlacesData();
-                getNearbyPlacesData.execute(DataTransfer);
-                Toast.makeText(NearyByPlacesActivity.this,"Nearby Schools", Toast.LENGTH_LONG).show();
+                else
+                {
+                    Utility.CustomToast(NearyByPlacesActivity.this, "No Internet Connection..!");
+                }
+                //Toast.makeText(NearyByPlacesActivity.this,"Nearby Schools", Toast.LENGTH_LONG).show();
             }
         });
+
     }
 
     protected synchronized void buildGoogleApiClient() {
@@ -242,7 +332,7 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
-        Toast.makeText(NearyByPlacesActivity.this,"Your Current Location", Toast.LENGTH_LONG).show();
+        //Toast.makeText(NearyByPlacesActivity.this,"Your Current Location", Toast.LENGTH_LONG).show();
 
         Log.d("onLocationChanged", String.format("latitude:%.3f longitude:%.3f",latitude,longitude));
 
@@ -252,7 +342,7 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
             Log.d("onLocationChanged", "Removing Location Updates");
         }
         Log.d("onLocationChanged", "Exit");
-
+        //loading.setVisibility(View.GONE);
     }
 
     @Override
@@ -316,7 +406,8 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
                 } else {
 
                     // Permission denied, Disable the functionality that depends on this permission.
-                    Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
+                   // Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
+                    Config.alertDialog(this, "Error","Permission denied.");
                 }
                 return;
             }
@@ -325,4 +416,242 @@ public class NearyByPlacesActivity extends AppCompatActivity implements OnMapRea
             // You can add here other case statements according to your requirement.
         }
     }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        switch (id) {
+            case android.R.id.home:
+                finish();
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    class UpdateUI implements Runnable {
+        String update;
+
+        public UpdateUI(String update) {
+
+            this.update = update;
+        }
+
+        public void run() {
+
+            SharedPreferences sharedpreferences = PreferenceManager.getDefaultSharedPreferences(NearyByPlacesActivity.this);
+            if(update.equals("Emergency")) {
+
+                String notType=sharedpreferences.getString("Type", "");
+                if (notType.equalsIgnoreCase("FriendRequest"))
+                {
+                    String reqstName=sharedpreferences.getString("RequsetByName", "");
+                    String thumbnail=sharedpreferences.getString("ThumbnailUrl", "");
+                    Config.showacceptrejectFriendRequest(reqstName,thumbnail,NearyByPlacesActivity.this);
+                    //Config.showacceptrejectFriendRequest(reqstName, NearyByPlacesActivity.this);
+                }
+                else if (notType.equalsIgnoreCase("Emergency"))
+                {
+                    String msg=sharedpreferences.getString("Message", "");
+                    String trobler=sharedpreferences.getString("TroublerName", "");
+                    String troblerid=sharedpreferences.getString("TroublerUserId", "");
+                    Config.showEmergencyAcceptReject(msg,trobler,troblerid,NearyByPlacesActivity.this);
+                }
+                else if (notType.equalsIgnoreCase("EmergencyRecipt"))
+                {
+                    String msg=sharedpreferences.getString("Message", "");
+                    String helpername=sharedpreferences.getString("HelperUserName", "");
+                    String isResch=sharedpreferences.getString("isReaching", "");
+                    if (isResch.equalsIgnoreCase("true")){}
+                    //showEmergencyAckAlert(newMsg, helpername);
+                    Config.showEmergencyAckAlert(msg,helpername,NearyByPlacesActivity.this);
+                }
+                else if (notType.equalsIgnoreCase("FriendRequestAccepted"))
+                {
+                    String msg=sharedpreferences.getString("Message", "");
+                    String helpername=sharedpreferences.getString("AcceptByName", "");
+
+                    Config.showAccptedRequestAlert(msg,helpername,NearyByPlacesActivity.this);
+                }
+
+            }
+
+            else if(update.equals("RefreshThreadList")) {
+
+            }
+        }
+    }
+
+    class MessageResultReceiver extends ResultReceiver
+    {
+        public MessageResultReceiver(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+
+            if(resultCode == 300){
+                NearyByPlacesActivity.this.runOnUiThread(new UpdateUI("Emergency"));
+            }
+            if(resultCode == 200){
+                NearyByPlacesActivity.this.runOnUiThread(new UpdateUI("RefreshThreadList"));
+            }
+
+        }
+    }
+
+    public boolean canGetLocation() {
+        boolean result = true;
+        LocationManager lm=null;
+        boolean gps_enabled = false;
+        boolean network_enabled = false;
+        if (lm == null)
+
+            lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+
+        // exceptions will be thrown if provider is not permitted.
+        try {
+            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+
+        }
+        try {
+            network_enabled = lm
+                    .isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception ex) {
+        }
+        if (gps_enabled == false || network_enabled == false) {
+            result = false;
+        } else {
+            result = true;
+        }
+
+        return result;
+    }
+
+    public class GetNearbyPlacesData extends AsyncTask<Object, String, String> {
+
+        String googlePlacesData;
+        GoogleMap mMap;
+        String url;
+
+        @Override
+        protected void onPreExecute() {
+
+            loading.setVisibility(View.VISIBLE);
+            super.onPreExecute();
+        }
+
+        @Override
+        protected String doInBackground(Object... params) {
+            try {
+                Log.d("GetNearbyPlacesData", "doInBackground entered");
+                mMap = (GoogleMap) params[0];
+                url = (String) params[1];
+                DownloadUrl downloadUrl = new DownloadUrl();
+                googlePlacesData = downloadUrl.readUrl(url);
+                Log.d("GooglePlacesReadTask", "doInBackground Exit");
+            } catch (Exception e) {
+                Log.d("GooglePlacesReadTask", e.toString());
+            }
+            return googlePlacesData;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            loading.setVisibility(View.GONE);
+            Log.d("GooglePlacesReadTask", "onPostExecute Entered");
+
+            if(result.contains("error_message"))
+            {
+                Config.alertDialog(NearyByPlacesActivity.this,"Error","Error to find your location.\n Please try after sometime.");
+            }
+            else
+            {
+                List<HashMap<String, String>> nearbyPlacesList = null;
+                DataParser dataParser = new DataParser();
+                nearbyPlacesList =  dataParser.parse(result);
+                ShowNearbyPlaces(nearbyPlacesList);
+                Log.d("GooglePlacesReadTask", "onPostExecute Exit");
+            }
+        }
+
+        private void ShowNearbyPlaces(List<HashMap<String, String>> nearbyPlacesList) {
+            for (int i = 0; i < nearbyPlacesList.size(); i++) {
+                Log.d("onPostExecute","Entered into showing locations");
+                MarkerOptions markerOptions = new MarkerOptions();
+                HashMap<String, String> googlePlace = nearbyPlacesList.get(i);
+                double lat = Double.parseDouble(googlePlace.get("lat"));
+                double lng = Double.parseDouble(googlePlace.get("lng"));
+                String placeName = googlePlace.get("place_name");
+                String vicinity = googlePlace.get("vicinity");
+                LatLng latLng = new LatLng(lat, lng);
+                markerOptions.position(latLng);
+                markerOptions.title(placeName + " : " + vicinity);
+                mMap.addMarker(markerOptions);
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+                //move map camera
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+            }
+
+        }
+    }
+
+    public class checkLocationService extends AsyncTask<Void,Void,Boolean> {
+
+        StringBuilder resultbuilder;
+        Context mycontext;
+        Boolean location;
+
+        public checkLocationService(Context mycontext) {
+            this.mycontext=mycontext;
+            loading.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+
+            location=canGetLocation();
+
+            return location;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean string) {
+            super.onPostExecute(string);
+            loading.setVisibility(View.GONE);
+            if (string)
+            {
+            }
+            else
+            {
+                showSettingsAlert();
+            }
+        }
+    }
+    public void showSettingsAlert() {
+        android.app.AlertDialog.Builder alertDialog = new android.app.AlertDialog.Builder(this);
+
+        // Setting Dialog Title
+        alertDialog.setTitle("Error!");
+
+        // Setting Dialog Message
+        alertDialog.setMessage("Please Activate GPS Service");
+
+        // On pressing Settings button
+        alertDialog.setPositiveButton("Ok",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(
+                                Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        startActivity(intent);
+                        finish();
+                    }
+                });
+
+        alertDialog.show();
+    }
+
+
 }

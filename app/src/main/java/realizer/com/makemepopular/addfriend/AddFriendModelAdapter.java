@@ -1,7 +1,10 @@
 package realizer.com.makemepopular.addfriend;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
@@ -10,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +28,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,6 +38,9 @@ import realizer.com.makemepopular.R;
 import realizer.com.makemepopular.friendlist.model.FriendListModel;
 import realizer.com.makemepopular.utils.Config;
 import realizer.com.makemepopular.utils.FontManager;
+import realizer.com.makemepopular.utils.GetImages;
+import realizer.com.makemepopular.utils.ImageStorage;
+import realizer.com.makemepopular.utils.Utility;
 
 /**
  * Created by Win on 13/01/2017.
@@ -65,7 +73,7 @@ public class AddFriendModelAdapter extends BaseAdapter {
         return position;
     }
 
-    /*@Override
+    @Override
     public int getViewTypeCount() {
         return friendList.size();
     }
@@ -73,7 +81,7 @@ public class AddFriendModelAdapter extends BaseAdapter {
     @Override
     public int getItemViewType(int position) {
         return position;
-    }*/
+    }
 
 
     @Override
@@ -83,7 +91,11 @@ public class AddFriendModelAdapter extends BaseAdapter {
             convertView = friendListInflater.inflate(R.layout.addfriend_adapter, null);
             holder = new ViewHolder();
             holder.txtfriendname= (TextView) convertView.findViewById(R.id.txt_addfrnd_frndname);
+            holder.txt_addfrnd_frndGender= (TextView) convertView.findViewById(R.id.txt_addfrnd_frndGender);
             holder.txtAddFriend= (TextView) convertView.findViewById(R.id.txt_addfrnd_addfriendbtn);
+            holder.img= (ImageView) convertView.findViewById(R.id.add_friend_img);
+            holder.txt_status= (TextView) convertView.findViewById(R.id.txt_status);
+            holder.addFriendLinearLayout = (LinearLayout) convertView.findViewById(R.id.addFriendLinearLayout);
 
             convertView.setTag(holder);
         } else {
@@ -91,24 +103,56 @@ public class AddFriendModelAdapter extends BaseAdapter {
         }
 
         holder.txtfriendname.setText(friendList.get(position).getFriendName());
+        holder.txt_addfrnd_frndGender.setText(friendList.get(position).getGender()+", "+friendList.get(position).getAge()+" Yrs");
         holder.txtAddFriend.setTypeface(FontManager.getTypeface(context1, FontManager.FONTAWESOME));
-        if (friendList.get(position).getStatus().equalsIgnoreCase("pending"))
+        if (friendList.get(position).getStatus().equalsIgnoreCase("Pending"))
+        {
+            holder.txtAddFriend.setText(R.string.fa_hourglass_1);
+            holder.txtAddFriend.setTextColor(Color.WHITE);
+            if (friendList.get(position).isRequestSent())
+                holder.txt_status.setText("Pending");
+            else
+                holder.txt_status.setText("Requested");
+        }
+        else  if (friendList.get(position).getStatus().equalsIgnoreCase("Accepted"))
         {
             holder.txtAddFriend.setText(R.string.fa_check_ico);
-            holder.txtAddFriend.setTextColor(Color.GREEN);
+            holder.txtAddFriend.setTextColor(context1.getResources().getColor(R.color.limegreen));
+            holder.txt_status.setText("Accepted");
         }
         else
         {
             holder.txtAddFriend.setText(R.string.fa_addfriend_ico);
             holder.txtAddFriend.setTextColor(Color.WHITE);
+            holder.txt_status.setText("Add Friend");
         }
 
-        holder.txtAddFriend.setOnClickListener(new View.OnClickListener() {
+        if (friendList.get(position).getThumbnailUrl()==""||friendList.get(position).getThumbnailUrl()==null||friendList.get(position).getThumbnailUrl()=="null")
+        {
+
+        }
+        else
+        {
+            String newURL= Utility.getURLImage(friendList.get(position).getThumbnailUrl());
+            if(!ImageStorage.checkifImageExists(newURL.split("/")[newURL.split("/").length - 1]))
+                new GetImages(newURL,holder.img,newURL.split("/")[newURL.split("/").length-1]).execute(newURL);
+            else
+            {
+                File image = ImageStorage.getImage(newURL.split("/")[newURL.split("/").length-1]);
+                BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+                Bitmap bitmap = BitmapFactory.decodeFile(image.getAbsolutePath(),bmOptions);
+                //  bitmap = Bitmap.createScaledBitmap(bitmap,parent.getWidth(),parent.getHeight(),true);
+                holder.img.setImageBitmap(bitmap);
+            }
+        }
+
+        holder.addFriendLinearLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(context1, ""+holder.txtfriendname.getText().toString(), Toast.LENGTH_SHORT).show();
+               // Toast.makeText(context1, "Name1="+holder.txtfriendname.getText().toString()+"name2="+holder.txtAddFriend.getText().toString(), Toast.LENGTH_SHORT).show();
 
-                if (! holder.txtAddFriend.getText().toString().equalsIgnoreCase(context1.getString(R.string.fa_check_ico)) && friendList.get(position).getStatus().equalsIgnoreCase("null"))
+                String stutusImage= holder.txtAddFriend.getText().toString();
+                if (friendList.get(position).getStatus().equalsIgnoreCase("null") || friendList.get(position).getStatus().equalsIgnoreCase("Rejected") || friendList.get(position).getStatus().equalsIgnoreCase("Blocked"))
                 {
                     if (Config.isConnectingToInternet(context1))
                     {
@@ -131,7 +175,9 @@ public class AddFriendModelAdapter extends BaseAdapter {
     }
     static class ViewHolder {
 
-        TextView txtfriendname,txtAddFriend;
+        TextView txtfriendname,txtAddFriend,txt_status,txt_addfrnd_frndGender;
+        ImageView img;
+        LinearLayout addFriendLinearLayout;
     }
 
     class SendFriendRequest1Asyntask extends AsyncTask<Void,Void,StringBuilder> {
@@ -139,6 +185,7 @@ public class AddFriendModelAdapter extends BaseAdapter {
         StringBuilder resultbuilder;
         Context mycontext;
         // private OnTaskCompleted callback;
+        ProgressDialog dialog;
         SharedPreferences sharedpreferences;
         String friendID;
         int posi;
@@ -153,7 +200,7 @@ public class AddFriendModelAdapter extends BaseAdapter {
         @Override
         protected void onPreExecute() {
             //super.onPreExecute();
-            // dialog=ProgressDialog.show(mycontext,"","Inserting Data...!");
+            dialog=ProgressDialog.show(mycontext,"","Sending Request...");
         }
 
         @Override
@@ -211,17 +258,29 @@ public class AddFriendModelAdapter extends BaseAdapter {
         @Override
         protected void onPostExecute(StringBuilder stringBuilder) {
             super.onPostExecute(stringBuilder);
-            //  dialog.dismiss();
-            AddFriendModel afm=new AddFriendModel();
-            afm.setFriendName(friendList.get(posi).getFriendName());
-            afm.setFriendid(friendList.get(posi).getFriendid());
-            afm.setStatus("pending");
-            friendList.set(posi,afm);
+            if (stringBuilder.toString().equalsIgnoreCase("true"))
+            {
+                AddFriendModel afm=new AddFriendModel();
+                afm.setFriendName(friendList.get(posi).getFriendName());
+                afm.setFriendid(friendList.get(posi).getFriendid());
+                afm.setStatus("pending");
+                afm.setAge(friendList.get(posi).getAge());
+                afm.setGender(friendList.get(posi).getGender());
+                friendList.set(posi,afm);
 
-            holder.txtAddFriend.setText(R.string.fa_check_ico);
-            holder.txtAddFriend.setTextColor(Color.GREEN);
-            notifyDataSetChanged();
-            //callback.onTaskCompleted(stringBuilder.toString());
+                holder.txtAddFriend.setText(R.string.fa_check_ico);
+                holder.txtAddFriend.setTextColor(Color.GREEN);
+                notifyDataSetChanged();
+                // Toast.makeText(context1, "Friend Request Sent Successfully", Toast.LENGTH_SHORT).show();
+                Config.alertDialog(context1, "Add Friend", "Friend Request Sent Successfully.");
+                dialog.dismiss();
+            }
+            else
+            {
+                Config.alertDialog(context1, "Add Friend", "Friend Request Not Send.");
+                dialog.dismiss();
+            }
+
         }
     }
 }

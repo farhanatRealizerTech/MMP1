@@ -15,6 +15,9 @@ public class FriendListModel
     boolean isEmergency=false;
     String friendId="";
     String thumbnailUrl="";
+    int frndPositio=0;
+    String status="";
+    boolean isSentRequest=false;
 
 
     public String getThumbnailUrl() {
@@ -95,5 +98,29 @@ public class FriendListModel
 
     public void setFriendId(String friendId) {
         this.friendId = friendId;
+    }
+
+    public int getFrndPositio() {
+        return frndPositio;
+    }
+
+    public void setFrndPositio(int frndPositio) {
+        this.frndPositio = frndPositio;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public boolean isSentRequest() {
+        return isSentRequest;
+    }
+
+    public void setSentRequest(boolean isSentRequest) {
+        this.isSentRequest = isSentRequest;
     }
 }

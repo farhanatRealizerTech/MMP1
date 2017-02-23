@@ -3,14 +3,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="@color/primary_light">
-
-    <ListView
+    android:background="@drawable/gradient_bg">
+    <realizer.com.makemepopular.expandableview.ActionSlideExpandableListView
+        android:id="@+id/list_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/list_friendlist">
+        android:animationCache="false"
+        android:divider="@null"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:scrollingCache="false"
+        android:smoothScrollbar="true" />
 
-    </ListView>
+    <TextView
+        android:id="@+id/noDataFound"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:textSize="16sp"
+        android:visibility="gone"
+        android:textStyle="bold"
+        android:text="You Have No Friends."/>
+
     <realizer.com.makemepopular.view.ProgressWheel
         android:id="@+id/loading"
         android:layout_width="100dp"
